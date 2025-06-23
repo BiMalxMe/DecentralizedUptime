@@ -26,6 +26,7 @@ app.get("/api/v1/website/status", authMidleware, async (req, res) => {
     where: {
       id: websiteid,
       userId,
+      diabled : false
     },
     include: {
       ticks: true,

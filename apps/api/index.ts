@@ -1,9 +1,9 @@
 import express from "express";
 import { prismaClient } from "db/client";
-import { authMidleware } from "./middleware";
 const app = express();
 app.use(express.json())
 import cors from "cors"
+import { authMidleware } from "./middleware";
 app.use(cors())
 
 app.post("/api/v1/website", authMidleware, async (req, res) => {

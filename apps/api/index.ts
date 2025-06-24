@@ -1,12 +1,15 @@
 import express from "express";
 import { prismaClient } from "db/client";
 import { authMidleware } from "./middleware";
-import { WebsiteStatus } from "../../packages/db/generated/prisma";
 const app = express();
+app.use(express.json())
+import cors from "cors"
+app.use(cors())
 
 app.post("/api/v1/website", authMidleware, async (req, res) => {
   const userId = req.userId!;
-  const { url } = req.body.url;
+  const  url  = req.body.url;
+  console.log(url)
   const response = await prismaClient.website.create({
     data: {
       userId,
@@ -34,13 +37,16 @@ app.get("/api/v1/website/status", authMidleware, async (req, res) => {
   });
   res.json(data);
 });
-app.get("/api/v1/websites", authMidleware, async (req, res) => {
+app.get("/api/v1/website", authMidleware, async (req, res) => {
   const userId = req.userId;
   const websites = await prismaClient.website.findMany({
     where: {
       userId,
       diabled: false,
     },
+    include  : {
+      ticks : true
+    }
   });
   res.json({
     websites,
@@ -65,4 +71,6 @@ app.delete("/api/v1/website/", authMidleware, async (req, res) => {
   })
 });
 
-app.listen(300);
+app.listen(8080,()=> {
+  console.log("sever Running .....")
+});

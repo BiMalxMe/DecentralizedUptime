@@ -20,12 +20,16 @@ export function useWebsites(){
 
     async function refreshWebsites(){
         const token = await getToken();
+        try{
         const response = await axios.get(`${Api_Backend_Url}/api/v1/website`,{
             headers :{
                 Authorization : token
             }
         })
         setwebsites(response.data.websites)
+    }catch(w){
+        alert(w)
+    }
     }
 
 

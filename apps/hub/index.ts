@@ -146,6 +146,7 @@ setInterval(async() =>{
                         validator.publickey,
                         signedMessage
                     );
+                    console.log(verified)
                     if (!verified) {
                         return;
                     }
@@ -172,4 +173,6 @@ setInterval(async() =>{
             };
         });
     }
+    console.log(CALLBACKS)
 }, 60 * 1000);
+

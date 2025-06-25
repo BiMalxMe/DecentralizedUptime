@@ -236,12 +236,11 @@ function App() {
 
             const token = await getToken();
             setIsModalOpen(false)
-            console.log(url)
             axios.post(`${Api_Backend_Url}/api/v1/website`, {
                 url,
             }, {
                 headers: {
-                    authorization: token,
+                    Authorization: token,
                 },
             })
             .then(() => {

@@ -18,10 +18,12 @@ import {
   Heart
 } from 'lucide-react';
 import { Appbar } from '@/components/Appbar';
+import { useRouter } from 'next/navigation';
 // import { useRouter } from 'next/navigation';
 
 function App() {
   // const router = useRouter()
+  const router = useRouter()
   return (
     <div className="min-h-screen bg-gray-900 text-white">
 
@@ -47,6 +49,7 @@ function App() {
               // onClick={() => router.push("./dashboard")
                 
               // }
+              onClick={ () => {router.push("./dashboard")}}
                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 px-8 py-4 rounded-lg font-semibold text-lg transition-all transform hover:scale-105 flex items-center">
                 Start Monitoring Now
                 <ArrowRight className="ml-2 h-5 w-5" />

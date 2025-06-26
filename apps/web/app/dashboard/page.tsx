@@ -57,6 +57,7 @@ function CreateWebsiteModal({ isOpen, onClose }: { isOpen: boolean; onClose: (ur
             >
               Cancel
             </button>
+
             <button
               type="submit"
               onClick={() => onClose(url)}
@@ -64,7 +65,76 @@ function CreateWebsiteModal({ isOpen, onClose }: { isOpen: boolean; onClose: (ur
             >
               Add Website
             </button>
+            <div>
+              
+            </div>
           </div>
+      </div>
+    </div>
+  );
+}
+
+function WithdrawModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+  const [publicKey, setPublicKey] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<string | null>(null);
+
+  const handleWithdraw = async () => {
+    setLoading(true);
+    setResult(null);
+    try {
+      const response = await axios.post(`${Api_Backend_Url}/api/payment/${validatorId}`, {
+        publicKey,
+      });
+      setResult('Withdraw request sent successfully!');
+    } catch (err: any) {
+      setResult('Error sending withdraw request.');
+    }
+    setLoading(false);
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md">
+        <h2 className="text-xl font-semibold mb-4 dark:text-white">Withdraw</h2>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Public Key
+          </label>
+          <input
+            type="text"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+            placeholder="Enter your public key"
+            value={publicKey}
+            onChange={(e) => setPublicKey(e.target.value)}
+            disabled={loading}
+          />
+        </div>
+        <div className="flex justify-end space-x-3 mt-6">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
+            disabled={loading}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleWithdraw}
+            className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md"
+            disabled={loading || !publicKey}
+          >
+            {loading ? 'Withdrawing...' : 'Withdraw'}
+          </button>
+        </div>
+        {result && (
+          <div className="mt-4 text-sm text-center text-gray-700 dark:text-gray-200">
+            {result}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -122,9 +192,12 @@ function WebsiteCard({ website }: { website: ProcessedWebsite }) {
 }
 
 function App() {
+  // const [validatorId, setValidatorId] = useState<string | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const {websites, refreshWebsites} = useWebsites();
+  const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);
+  const [foraddingwebsites, setaddingwebsites] = useState<Boolean>();
+  const { websites, refreshWebsites } = useWebsites();
   const { getToken } = useAuth();
 
   const processedWebsites = useMemo(() => {
@@ -216,6 +289,12 @@ function App() {
               <Plus className="w-4 h-4" />
               <span>Add Website</span>
             </button>
+            <button
+              onClick={() => setIsWithdrawModalOpen(true)}
+              className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200"
+            >
+              <span>Withdraw</span>
+            </button>
           </div>
         </div>
         
@@ -236,7 +315,7 @@ function App() {
 
             const token = await getToken();
             setIsModalOpen(false)
-            axios.post(`${Api_Backend_Url}/api/v1/website`, {
+            const validatorId  = axios.post(`${Api_Backend_Url}/api/v1/website`, {
                 url,
             }, {
                 headers: {
@@ -244,9 +323,15 @@ function App() {
                 },
             })
             .then(() => {
+              // setValidatorId(val  idatorId.data.i);
                 refreshWebsites();
             })
         }}
+      />
+
+      <WithdrawModal
+        isOpen={isWithdrawModalOpen}
+        onClose={() => setIsWithdrawModalOpen(false)}
       />
     </div>
   );

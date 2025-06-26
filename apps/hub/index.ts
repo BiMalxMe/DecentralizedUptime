@@ -3,7 +3,6 @@ import { type IncomingMessage, type SignupIncomingMessage } from "overlaps/types
 import {prismaClient} from "db/client"
 import nacl_util from "tweetnacl-util"
 import nacl from "tweetnacl"
-import { Public } from "../../packages/db/generated/prisma/runtime/library"
 import { PublicKey } from "@solana/web3.js"
 
 const availableValidators : {
@@ -94,6 +93,7 @@ async function SignupHandler(ws : ServerWebSocket<unknown>, {
             },
  });
  
+
  ws.send(JSON.stringify({
     type : "signup",
     data : {

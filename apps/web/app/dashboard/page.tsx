@@ -83,7 +83,7 @@ function WithdrawModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
     setLoading(true);
     setResult(null);
     try {
-      const response = await axios.post(`${Api_Backend_Url}/api/payment/${validatorId}`, {
+      const response = await axios.post(`${Api_Backend_Url}/api/payment/c3c0798d-3536-484a-a488-2624f4128240}`, {
         publicKey,
       });
       setResult('Withdraw request sent successfully!');

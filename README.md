@@ -1,135 +1,140 @@
-# Turborepo starter
+# Overlaps Hub
 
-This Turborepo starter is maintained by the Turborepo core team.
+The **Overlaps Hub** is a backend service designed to coordinate a decentralized network of validators that monitor the uptime and performance of registered websites. The hub leverages WebSockets for real-time communication, a PostgreSQL database (via Prisma ORM) for persistence, and cryptographic signatures for secure validator authentication.
 
-## Using this example
+---
 
-Run the following command:
+## Table of Contents
 
-```sh
-npx create-turbo@latest
-```
+- [Architecture Overview](#architecture-overview)
+- [Tech Stack](#tech-stack)
+- [How It Works](#how-it-works)
+  - [WebSocket Connection](#websocket-connection)
+  - [Validator Signup Flow](#validator-signup-flow)
+  - [Website Monitoring & Validation](#website-monitoring--validation)
+  - [Callback Mechanism](#callback-mechanism)
+- [Database Schema](#database-schema)
+- [Development](#development)
+- [Security](#security)
+- [Extending the Hub](#extending-the-hub)
+- [License](#license)
 
-## What's inside?
+---
 
-This Turborepo includes the following packages/apps:
+## Architecture Overview
 
-### Apps and Packages
+The Overlaps Hub acts as a central coordinator in a distributed monitoring system:
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
+- **Validators**: Independent nodes that connect to the hub via WebSocket, authenticate using cryptographic signatures, and perform website checks.
+- **Hub**: Maintains a pool of available validators, assigns website validation tasks, verifies validator responses, and records results in the database.
+- **Database**: Stores users, websites, validators, and validation results (ticks).
 
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
+The architecture is event-driven and highly extensible, allowing for additional monitoring logic or validator incentives.
 
-### Utilities
+---
 
-This Turborepo has some additional tools already setup for you:
+## Tech Stack
 
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
+- **Runtime**: [Bun](https://bun.sh/) (for fast TypeScript/JavaScript execution and native WebSocket support)
+- **Database**: PostgreSQL (accessed via [Prisma ORM](https://www.prisma.io/))
+- **Cryptography**: [tweetnacl](https://github.com/dchest/tweetnacl-js) and [@solana/web3.js](https://solana.com/) for signature verification
+- **WebSocket**: Bun's built-in WebSocket server
+- **Type Definitions**: Custom types in the `overlaps/types` package
 
-### Build
+---
 
-To build all apps and packages, run the following command:
+## How It Works
 
-```
-cd my-turborepo
+### WebSocket Connection
 
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo build
+- The hub listens on port `8081` for incoming WebSocket connections.
+- Validators connect and upgrade their HTTP connection to a WebSocket.
+- Each validator is tracked in an in-memory pool with its socket, public key, and unique ID.
 
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo build
-yarn dlx turbo build
-pnpm exec turbo build
-```
+### Validator Signup Flow
 
-You can build a specific package by using a [filter](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters):
+1. **Signup Message**: Validator sends a `signup` message containing its public key, IP, and a signed message.
+2. **Verification**: The hub verifies the signature using the provided public key.
+3. **Registration**: If the validator is new, it is added to the database; otherwise, its existing record is used.
+4. **Acknowledgement**: The hub responds with the validator's unique ID and registers the validator in the active pool.
 
-```
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo build --filter=docs
+### Website Monitoring & Validation
 
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo build --filter=docs
-yarn exec turbo build --filter=docs
-pnpm exec turbo build --filter=docs
-```
+- Every minute, the hub fetches all enabled websites from the database.
+- For each website, the hub assigns validation tasks to all connected validators.
+- Each validator receives a `validate` message with the website URL and a unique callback ID.
+- Validators perform the check and respond with a signed result (status, latency, etc.).
+- The hub verifies the response signature and records the result in the database, incrementing the validator's pending payouts.
 
-### Develop
+### Callback Mechanism
 
-To develop all apps and packages, run the following command:
+- The hub uses a callback registry (`CALLBACKS`) keyed by callback IDs to handle asynchronous validator responses.
+- Once a response is processed, the callback is removed to prevent memory leaks.
 
-```
-cd my-turborepo
+---
 
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo dev
+## Database Schema
 
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo dev
-yarn exec turbo dev
-pnpm exec turbo dev
-```
+The schema is defined in Prisma and includes:
 
-You can develop a specific package by using a [filter](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters):
+- **User**: Website owners.
+- **Website**: Sites to be monitored.
+- **Validator**: Nodes performing checks.
+- **WebsiteTick**: Individual validation results.
+- **WebsiteStatus**: Enum (`Good`/`Bad`).
 
-```
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo dev --filter=web
+See [`packages/db/prisma/schema.prisma`](packages/db/prisma/schema.prisma) for details.
 
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo dev --filter=web
-yarn exec turbo dev --filter=web
-pnpm exec turbo dev --filter=web
-```
+---
 
-### Remote Caching
+## Development
 
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
+### Prerequisites
 
-Turborepo can use a technique known as [Remote Caching](https://turborepo.com/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
+- [Bun](https://bun.sh/)
+- [PostgreSQL](https://www.postgresql.org/)
+- [Prisma CLI](https://www.prisma.io/docs/cli)
 
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
+### Setup
 
-```
-cd my-turborepo
+1. **Install dependencies:**
+   ```sh
+   bun install
+   ```
 
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo login
+2. **Configure database:**
+   - Set your `DATABASE_URL` in the environment.
 
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo login
-yarn exec turbo login
-pnpm exec turbo login
-```
+3. **Run migrations:**
+   ```sh
+   npx prisma migrate dev
+   ```
 
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
+4. **Start the hub:**
+   ```sh
+   bun run index.ts
+   ```
 
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
+---
 
-```
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo link
+## Security
 
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo link
-yarn exec turbo link
-pnpm exec turbo link
-```
+- **Authentication**: Validators must prove ownership of their public key by signing messages.
+- **Signature Verification**: All critical messages (signup, validation results) are verified using Ed25519 signatures.
+- **Isolation**: Validators are isolated from each other and only interact with the hub.
 
-## Useful Links
+---
 
-Learn more about the power of Turborepo:
+## Extending the Hub
 
-- [Tasks](https://turborepo.com/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.com/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.com/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.com/docs/reference/configuration)
-- [CLI Usage](https://turborepo.com/docs/reference/command-line-reference)
+- **Add new validation logic**: Modify the periodic task in `index.ts`.
+- **Support more message types**: Extend the WebSocket message handler.
+- **Integrate payouts**: Use the `pendingPayouts` field in the `Validator` model.
+
+---
+
+## License
+
+This project is licensed under the MIT License.
+
+---
